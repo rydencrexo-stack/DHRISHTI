@@ -8,7 +8,8 @@ function App() {
   const [detections, setDetections] = useState([]);
   const [intrusions, setIntrusions] = useState([]);
   const [fence, setFence] = useState(null);
-  const [apiError, setApiError] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [cctvError, setCctvError] = useState(false);
 
   // -----------------------------
   // HEALTH
@@ -24,16 +25,13 @@ function App() {
       const data = await response.json();
 
       setBackendStatus(data.status === "healthy" ? "Online" : "Offline");
-
-      setApiError(false);
-    } catch (error) {
+    } catch {
       setBackendStatus("Offline");
-      setApiError(true);
     }
   };
 
   // -----------------------------
-  // DETECTIONS
+  // REAL YOLO DETECTIONS
   // -----------------------------
   const fetchDetections = async () => {
     try {
@@ -45,23 +43,16 @@ function App() {
 
       const data = await response.json();
 
-      /*
-       * Backend may return either:
-       * an array directly
-       * or { detections: [...] }
-       */
-      if (Array.isArray(data)) {
-        setDetections(data);
-      } else {
-        setDetections(data.detections || []);
-      }
-    } catch (error) {
+      setDetections(data.detections || []);
+      setAiEnabled(Boolean(data.ai_enabled));
+    } catch {
       setDetections([]);
+      setAiEnabled(false);
     }
   };
 
   // -----------------------------
-  // INTRUSIONS
+  // REAL INTRUSIONS
   // -----------------------------
   const fetchIntrusions = async () => {
     try {
@@ -73,18 +64,14 @@ function App() {
 
       const data = await response.json();
 
-      if (Array.isArray(data)) {
-        setIntrusions(data);
-      } else {
-        setIntrusions(data.intrusions || []);
-      }
-    } catch (error) {
+      setIntrusions(data.intrusions || []);
+    } catch {
       setIntrusions([]);
     }
   };
 
   // -----------------------------
-  // FENCE
+  // REAL FENCE
   // -----------------------------
   const fetchFence = async () => {
     try {
@@ -97,13 +84,13 @@ function App() {
       const data = await response.json();
 
       setFence(data);
-    } catch (error) {
+    } catch {
       setFence(null);
     }
   };
 
   // -----------------------------
-  // INITIAL LOAD + REFRESH
+  // API POLLING
   // -----------------------------
   useEffect(() => {
     checkHealth();
@@ -115,7 +102,7 @@ function App() {
       checkHealth();
       fetchDetections();
       fetchIntrusions();
-    }, 3000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -123,23 +110,35 @@ function App() {
   const detectionCount = detections.length;
   const intrusionCount = intrusions.length;
 
+  const scrollToSection = (id) => {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   return (
     <div className="app">
-      {/* SIDEBAR */}
+      {/* =====================================================
+          SIDEBAR
+      ===================================================== */}
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">
+          <div className="brand-logo">
             <img
               src="https://varshasolanki54321-lang.github.io/Dhrishti-UI/dhrishti-logo.png"
-              alt="DHRISHTI logo"
+              alt="DHRISHTI"
             />
           </div>
 
-          <div>
+          <div className="brand-text">
             <h1>DHRISHTI</h1>
-            <span>INTELLIGENT SURVEILLANCE</span>
+            <span>INTELLIGENT</span>
+            <span>SURVEILLANCE</span>
           </div>
         </div>
+
+        <div className="nav-section-title">COMMAND CENTER</div>
 
         <nav className="sidebar-nav">
           <button
@@ -151,364 +150,542 @@ function App() {
               })
             }
           >
-            <span>▦</span>
+            <span className="nav-icon">▦</span>
             Dashboard
           </button>
 
           <button
             className="nav-item"
-            onClick={() =>
-              document.getElementById("live-surveillance")?.scrollIntoView({
-                behavior: "smooth",
-              })
-            }
+            onClick={() => scrollToSection("live-surveillance")}
           >
-            <span>◉</span>
+            <span className="nav-icon">◉</span>
             Live Surveillance
           </button>
 
           <button
             className="nav-item"
-            onClick={() =>
-              document.getElementById("incidents")?.scrollIntoView({
-                behavior: "smooth",
-              })
-            }
+            onClick={() => scrollToSection("ai-detection")}
           >
-            <span>⚠</span>
-            Incidents
+            <span className="nav-icon">⌁</span>
+            AI Detection
           </button>
 
           <button
             className="nav-item"
-            onClick={() =>
-              document.getElementById("analytics")?.scrollIntoView({
-                behavior: "smooth",
-              })
-            }
+            onClick={() => scrollToSection("incidents")}
           >
-            <span>◫</span>
+            <span className="nav-icon">⚠</span>
+            Incident Alerts
+            {intrusionCount > 0 && (
+              <span className="nav-count">
+                {String(intrusionCount).padStart(2, "0")}
+              </span>
+            )}
+          </button>
+
+          <button
+            className="nav-item"
+            onClick={() => scrollToSection("border-map")}
+          >
+            <span className="nav-icon">✦</span>
+            Border Map
+          </button>
+        </nav>
+
+        <div className="nav-section-title analytics-title">ANALYTICS</div>
+
+        <nav className="sidebar-nav">
+          <button
+            className="nav-item"
+            onClick={() => scrollToSection("ai-detection")}
+          >
+            <span className="nav-icon">▤</span>
             Analytics
+          </button>
+
+          <button
+            className="nav-item"
+            onClick={() => scrollToSection("incidents")}
+          >
+            <span className="nav-icon">◷</span>
+            Activity Logs
+          </button>
+
+          <button
+            className="nav-item"
+            onClick={() => scrollToSection("system-status")}
+          >
+            <span className="nav-icon">⚙</span>
+            System Settings
           </button>
         </nav>
 
         {/* SYSTEM STATUS */}
-        <div className="system-status">
-          <div className="status-title">SYSTEM STATUS</div>
+        <div className="system-status" id="system-status">
+          <div className="system-status-title">Infrastructure Status</div>
 
-          <div className="status-row">
-            <span>Backend</span>
+          <div className="system-online">
+            <span className="online-dot"></span>
 
-            <strong
-              className={
-                backendStatus === "Online"
-                  ? "status-online"
-                  : backendStatus === "Checking..."
-                    ? "status-checking"
-                    : "status-offline"
-              }
-            >
-              {backendStatus}
-            </strong>
+            <span>
+              {backendStatus === "Online"
+                ? "All systems operational"
+                : "System connection issue"}
+            </span>
           </div>
 
-          <div className="status-row">
-            <span>CCTV</span>
+          <div className="system-lines">
+            <div>
+              <span>Backend</span>
+              <strong
+                className={
+                  backendStatus === "Online" ? "online-text" : "offline-text"
+                }
+              >
+                {backendStatus}
+              </strong>
+            </div>
 
-            <strong
-              className={
-                backendStatus === "Online" ? "status-online" : "status-offline"
-              }
-            >
-              {backendStatus === "Online" ? "Connected" : "Offline"}
-            </strong>
+            <div>
+              <span>CCTV</span>
+              <strong
+                className={
+                  backendStatus === "Online" ? "online-text" : "offline-text"
+                }
+              >
+                {backendStatus === "Online" ? "Connected" : "Offline"}
+              </strong>
+            </div>
+
+            <div>
+              <span>AI Engine</span>
+              <strong className={aiEnabled ? "online-text" : "offline-text"}>
+                {aiEnabled ? "Online" : "Disabled"}
+              </strong>
+            </div>
           </div>
+        </div>
 
-          <div className="status-row">
-            <span>AI Engine</span>
+        <div className="secure-system">
+          <div className="secure-icon">◇</div>
 
-            <strong
-              className={
-                detectionCount > 0 ? "status-online" : "status-checking"
-              }
-            >
-              {detectionCount > 0 ? "Active" : "Monitoring"}
-            </strong>
+          <div>
+            <strong>SECURE SYSTEM</strong>
+            <span>Encrypted surveillance network</span>
           </div>
         </div>
       </aside>
 
-      {/* MAIN */}
+      {/* =====================================================
+          MAIN CONTENT
+      ===================================================== */}
       <main className="main-content">
-        {/* HEADER */}
+        {/* TOP HEADER */}
         <header className="topbar">
           <div>
-            <div className="eyebrow">BORDER SURVEILLANCE COMMAND</div>
+            <div className="eyebrow">• BORDER SURVEILLANCE COMMAND</div>
 
             <h2>Surveillance Overview</h2>
 
-            <p className="subtitle">
-              AI-powered border monitoring and intelligent video analytics
-            </p>
+            <p>AI-powered border monitoring and intelligent video analytics</p>
           </div>
 
-          <div className="topbar-status">
-            <span
+          <div className="operator-area">
+            <div
               className={
-                backendStatus === "Online" ? "status-dot" : "status-dot offline"
+                backendStatus === "Online"
+                  ? "engine-badge"
+                  : "engine-badge offline"
               }
-            ></span>
-            BACKEND {backendStatus.toUpperCase()}
+            >
+              <span>•</span>
+              AI ENGINE {aiEnabled ? "ONLINE" : "STANDBY"}
+            </div>
+
+            <div className="clock">
+              {new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+              })}
+            </div>
+
+            <div className="operator-avatar">OP</div>
+
+            <div className="operator-info">
+              <strong>OPERATOR</strong>
+              <span>Control Room</span>
+            </div>
           </div>
         </header>
 
-        {/* STATISTICS */}
+        {/* =====================================================
+            STAT CARDS
+        ===================================================== */}
         <section className="stats-grid">
           <div className="stat-card">
-            <div className="stat-label">ACTIVE CAMERAS</div>
+            <div className="stat-icon">▣</div>
 
-            <div className="stat-value">01</div>
+            <div className="stat-content">
+              <span>ACTIVE CAMERAS</span>
 
-            <div className="stat-note">Live CCTV stream</div>
-          </div>
+              <strong>01</strong>
 
-          <div className="stat-card">
-            <div className="stat-label">AI DETECTIONS</div>
-
-            <div className="stat-value">{detectionCount}</div>
-
-            <div className="stat-note">Real YOLO detections</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-label">ACTIVE INTRUSIONS</div>
-
-            <div className="stat-value">{intrusionCount}</div>
-
-            <div className="stat-note">Restricted-zone entries</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-label">AI ENGINE</div>
-
-            <div className="stat-value ai-status">
-              {detectionCount > 0 ? "ON" : "READY"}
+              <small>• 1 / 1 operational</small>
             </div>
+          </div>
 
-            <div className="stat-note">Live backend status</div>
+          <div className="stat-card">
+            <div className="stat-icon">⌁</div>
+
+            <div className="stat-content">
+              <span>AI DETECTIONS</span>
+
+              <strong>{detectionCount}</strong>
+
+              <small>
+                {aiEnabled ? "↑ Real YOLO detections" : "AI model unavailable"}
+              </small>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon warning">△</div>
+
+            <div className="stat-content">
+              <span>ACTIVE ALERTS</span>
+
+              <strong>{String(intrusionCount).padStart(2, "0")}</strong>
+
+              <small>
+                {intrusionCount > 0
+                  ? "Restricted area intrusion"
+                  : "No active intrusion"}
+              </small>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon">◎</div>
+
+            <div className="stat-content">
+              <span>AI ENGINE</span>
+
+              <strong className="ai-card-status">
+                {aiEnabled ? "ON" : "OFF"}
+              </strong>
+
+              <small>
+                {aiEnabled
+                  ? "Real-time analysis active"
+                  : "Model not available"}
+              </small>
+            </div>
           </div>
         </section>
 
-        {/* CCTV */}
-        <section id="live-surveillance" className="panel">
-          <div className="panel-header">
-            <div>
-              <div className="panel-kicker">LIVE SURVEILLANCE</div>
+        {/* =====================================================
+            LIVE CCTV + INCIDENTS
+        ===================================================== */}
+        <section className="main-monitor-grid" id="live-surveillance">
+          {/* CCTV PANEL */}
+          <div className="panel cctv-panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-kicker">LIVE SURVEILLANCE</div>
 
-              <h3>Live CCTV Surveillance</h3>
-            </div>
+                <h3>Live CCTV Surveillance</h3>
 
-            <span className="live-badge">● LIVE</span>
-          </div>
-
-          <div className="cctv-container">
-            <div className="camera-header">
-              <span>CAM-01 • DEMO SECTOR</span>
-
-              <span className="camera-live">● LIVE</span>
-            </div>
-
-            {backendStatus === "Online" ? (
-              <img
-                className="cctv-stream"
-                src={`${BACKEND_URL}/api/video/demo`}
-                alt="Live DHRISHTI CCTV surveillance feed"
-              />
-            ) : (
-              <div className="cctv-offline">
-                <div className="cctv-icon">◉</div>
-
-                <h3>CCTV stream unavailable</h3>
-
-                <p>
-                  Start the DHRISHTI backend to view the live surveillance feed.
-                </p>
+                <p>Existing infrastructure • AI analysis active</p>
               </div>
-            )}
 
-            <div className="camera-footer">
-              <span>DEMO CCTV FEED</span>
+              <span className="live-badge">• LIVE</span>
+            </div>
 
-              <span>MJPEG STREAM</span>
+            <div className="cctv-wrapper">
+              <div className="camera-top">
+                <span>CAM-01 • DEMO SECTOR</span>
+
+                <span className="camera-live">• LIVE</span>
+              </div>
+
+              <div className="cctv-screen">
+                {backendStatus === "Online" && !cctvError ? (
+                  <img
+                    src={`${BACKEND_URL}/api/video/demo`}
+                    alt="DHRISHTI live CCTV"
+                    className="cctv-stream"
+                    onError={() => setCctvError(true)}
+                  />
+                ) : (
+                  <div className="cctv-offline">
+                    <div className="offline-camera-icon">◉</div>
+
+                    <h3>CCTV STREAM UNAVAILABLE</h3>
+
+                    <p>
+                      Start the FastAPI backend to view the live surveillance
+                      feed.
+                    </p>
+                  </div>
+                )}
+
+                {/* LIVE LABEL */}
+                {backendStatus === "Online" && !cctvError && (
+                  <div className="feed-label">LIVE FEED</div>
+                )}
+              </div>
+
+              <div className="camera-bottom">
+                <div>
+                  <strong>Demo Sector Surveillance</strong>
+
+                  <span>
+                    {aiEnabled
+                      ? "AI PERSON DETECTION ACTIVE"
+                      : "AI ANALYSIS STANDBY"}
+                  </span>
+                </div>
+
+                <div className="stream-type">MJPEG STREAM</div>
+              </div>
             </div>
           </div>
-        </section>
 
-        {/* INCIDENTS */}
-        <section id="incidents" className="two-column">
-          <div className="panel">
+          {/* INCIDENT PANEL */}
+          <div className="panel incidents-panel" id="incidents">
             <div className="panel-header">
               <div>
                 <div className="panel-kicker">SECURITY EVENTS</div>
 
-                <h3>Restricted Area Intrusions</h3>
+                <h3>AI Incident Alerts</h3>
+
+                <p>Real-time detection events</p>
               </div>
 
               <span
-                className={
-                  intrusionCount > 0 ? "danger-badge" : "waiting-badge"
-                }
+                className={intrusionCount > 0 ? "danger-badge" : "safe-badge"}
               >
                 {intrusionCount > 0
-                  ? `${intrusionCount} ACTIVE`
-                  : "NO INTRUSIONS"}
+                  ? `${String(intrusionCount).padStart(2, "0")} ACTIVE`
+                  : "0 ACTIVE"}
               </span>
             </div>
 
-            {intrusionCount > 0 ? (
-              <div className="incident-list">
-                {intrusions.map((intrusion, index) => (
-                  <div className="incident-item" key={intrusion.id || index}>
-                    <div className="incident-icon">⚠</div>
+            <div className="incident-list">
+              {intrusionCount > 0 ? (
+                intrusions.map((intrusion, index) => (
+                  <div
+                    className="incident-item"
+                    key={intrusion.track_id || index}
+                  >
+                    <div className="incident-icon danger">⚠</div>
 
                     <div className="incident-info">
-                      <strong>Person detected in restricted area</strong>
+                      <strong>Restricted Area Intrusion</strong>
 
-                      <span>
-                        Track ID:{" "}
-                        {intrusion.track_id || intrusion.id || "Unknown"}
-                      </span>
+                      <span>Track ID: {intrusion.track_id ?? "Unknown"}</span>
+
+                      <small>
+                        Confidence:{" "}
+                        {intrusion.confidence !== undefined
+                          ? `${(Number(intrusion.confidence) * 100).toFixed(
+                              1,
+                            )}%`
+                          : "N/A"}
+                      </small>
                     </div>
 
-                    <div className="incident-time">ACTIVE</div>
+                    <div className="incident-active">ACTIVE</div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-icon">✓</div>
+                ))
+              ) : (
+                <div className="no-incidents">
+                  <div className="safe-check">✓</div>
 
-                <h3>No active intrusions</h3>
+                  <strong>No Active Intrusions</strong>
 
-                <p>
-                  No tracked persons are currently reported inside the
-                  restricted area.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* FENCE */}
-          <div className="panel">
-            <div className="panel-header">
-              <div>
-                <div className="panel-kicker">BORDER MONITORING</div>
-
-                <h3>Restricted Zone</h3>
-              </div>
-
-              <span className="waiting-badge">
-                {fence ? "ZONE ACTIVE" : "LOADING"}
-              </span>
-            </div>
-
-            <div className="map-placeholder">
-              <div className="map-grid"></div>
-
-              <div className="map-center">
-                <div className="map-crosshair">+</div>
-
-                <span>
-                  {fence ? "RESTRICTED POLYGON ACTIVE" : "LOADING FENCE DATA"}
-                </span>
-
-                <small>
-                  {fence
-                    ? "Live /api/fence response received"
-                    : "Waiting for backend"}
-                </small>
-              </div>
+                  <span>
+                    No tracked person is currently inside the restricted area.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </section>
 
-        {/* ANALYTICS */}
-        <section id="analytics" className="panel ai-summary">
+        {/* =====================================================
+            AI DETECTION
+        ===================================================== */}
+        <section className="panel detection-panel" id="ai-detection">
           <div className="panel-header">
             <div>
               <div className="panel-kicker">ARTIFICIAL INTELLIGENCE</div>
 
               <h3>Live Detection Summary</h3>
+
+              <p>Real YOLO detection data from FastAPI</p>
             </div>
 
-            <span className="live-badge">REAL DATA</span>
+            <span className="live-badge">
+              {aiEnabled ? "REAL DATA" : "AI OFF"}
+            </span>
           </div>
 
-          <div className="ai-grid">
-            <div className="ai-item">
+          <div className="detection-summary-grid">
+            <div className="summary-box">
               <span>PERSON DETECTIONS</span>
-
               <strong>{detectionCount}</strong>
             </div>
 
-            <div className="ai-item">
+            <div className="summary-box">
               <span>ACTIVE INTRUSIONS</span>
-
               <strong>{intrusionCount}</strong>
             </div>
 
-            <div className="ai-item">
-              <span>RESTRICTED ZONE</span>
-
-              <strong>{fence ? "ACTIVE" : "LOADING"}</strong>
+            <div className="summary-box">
+              <span>TRACKED PERSONS</span>
+              <strong>
+                {
+                  detections.filter((item) => item.track_id !== undefined)
+                    .length
+                }
+              </strong>
             </div>
 
-            <div className="ai-item">
-              <span>BACKEND</span>
-
-              <strong>{backendStatus}</strong>
+            <div className="summary-box">
+              <span>AI STATUS</span>
+              <strong>{aiEnabled ? "ACTIVE" : "OFF"}</strong>
             </div>
           </div>
 
-          {/* DETECTION DETAILS */}
           <div className="detection-details">
-            <div className="detection-title">CURRENT YOLO DETECTIONS</div>
+            <div className="details-heading">CURRENT YOLO DETECTIONS</div>
 
             {detectionCount > 0 ? (
-              <div className="detection-list">
+              <div className="detection-table">
+                <div className="table-header">
+                  <span>TRACK ID</span>
+                  <span>OBJECT</span>
+                  <span>CONFIDENCE</span>
+                  <span>STATUS</span>
+                </div>
+
                 {detections.map((detection, index) => (
-                  <div className="detection-row" key={detection.id || index}>
-                    <span>Person #{index + 1}</span>
+                  <div className="table-row" key={detection.track_id ?? index}>
+                    <span className="track-id">
+                      #{detection.track_id ?? "N/A"}
+                    </span>
+
+                    <span>{detection.class_name || "person"}</span>
 
                     <span>
                       {detection.confidence !== undefined
                         ? `${(Number(detection.confidence) * 100).toFixed(1)}%`
-                        : "Detected"}
+                        : "N/A"}
                     </span>
+
+                    <span className="detected-status">DETECTED</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="no-detections">
-                No person detections currently reported by the AI API.
+              <div className="no-detection-data">
+                <div className="no-data-icon">◎</div>
+
+                <strong>
+                  {aiEnabled
+                    ? "No persons currently detected"
+                    : "AI detection unavailable"}
+                </strong>
+
+                <span>
+                  {aiEnabled
+                    ? "The backend is running, but no person is currently visible to YOLO."
+                    : "The backend is running without the YOLO model."}
+                </span>
               </div>
             )}
           </div>
         </section>
 
-        {apiError && (
-          <div className="api-warning">
-            Backend connection unavailable. Make sure FastAPI is running on
-            127.0.0.1:8000.
+        {/* =====================================================
+            BORDER MAP / FENCE
+        ===================================================== */}
+        <section className="panel border-panel" id="border-map">
+          <div className="panel-header">
+            <div>
+              <div className="panel-kicker">BORDER MONITORING</div>
+
+              <h3>Restricted Zone</h3>
+
+              <p>Virtual fence configuration</p>
+            </div>
+
+            <span className={fence ? "safe-badge" : "waiting-badge"}>
+              {fence ? "ZONE ACTIVE" : "LOADING"}
+            </span>
           </div>
-        )}
 
+          <div className="border-map">
+            <div className="map-grid"></div>
+
+            <div className="map-radar"></div>
+
+            <div className="fence-shape">
+              <div className="fence-label">RESTRICTED AREA</div>
+
+              <span className="fence-point p1"></span>
+              <span className="fence-point p2"></span>
+              <span className="fence-point p3"></span>
+              <span className="fence-point p4"></span>
+            </div>
+
+            <div className="map-center">
+              <div className="map-crosshair">+</div>
+
+              <strong>
+                {fence ? "RESTRICTED POLYGON ACTIVE" : "WAITING FOR FENCE DATA"}
+              </strong>
+
+              <span>
+                {fence
+                  ? `${fence.polygon?.length || 0} boundary points received`
+                  : "Connecting to /api/fence"}
+              </span>
+            </div>
+          </div>
+
+          {fence?.polygon && (
+            <div className="fence-coordinates">
+              <span>LIVE FENCE COORDINATES</span>
+
+              <div>
+                {fence.polygon.map((point, index) => (
+                  <code key={index}>
+                    P{index + 1} [{point[0]}, {point[1]}]
+                  </code>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* =====================================================
+            FOOTER
+        ===================================================== */}
         <footer>
-          <span>DHRISHTI</span>
+          <div>
+            <strong>DHRISHTI</strong>
+            <span>AI-Based Intelligent Video Analytics Platform</span>
+          </div>
 
-          <span>AI-Based Intelligent Video Analytics Platform</span>
-
-          <span>Frontend • React</span>
+          <div>
+            <span>FRONTEND • REACT</span>
+            <span>BACKEND • FASTAPI</span>
+            <span>AI • YOLO</span>
+          </div>
         </footer>
       </main>
     </div>
