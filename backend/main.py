@@ -11,6 +11,7 @@ from backend.ai_processor import AIProcessor
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 VIDEO_PATH = BASE_DIR / "demo_videos" / "cctv demo footage.mp4"
+MODEL_PATH = BASE_DIR / "models" / "yolo26n.pt"
 
 
 app = FastAPI(
@@ -33,16 +34,33 @@ app.add_middleware(
 
 
 ai_processor = AIProcessor()
+ai_enabled = False
 
 
 @app.on_event("startup")
 def start_ai_processor():
-    ai_processor.start()
+    global ai_enabled
+
+    if not MODEL_PATH.exists():
+        print(f"WARNING: YOLO model not found: {MODEL_PATH}")
+        print("AI processing disabled. Health and CCTV endpoints remain available.")
+        ai_enabled = False
+        return
+
+    try:
+        ai_processor.start()
+        ai_enabled = True
+        print("AI processor started successfully.")
+    except Exception as error:
+        print(f"WARNING: AI processor could not start: {error}")
+        print("AI processing disabled. Health and CCTV endpoints remain available.")
+        ai_enabled = False
 
 
 @app.on_event("shutdown")
 def stop_ai_processor():
-    ai_processor.stop()
+    if ai_enabled:
+        ai_processor.stop()
 
 
 @app.get("/api/health")
@@ -54,11 +72,19 @@ def health_check():
 
 @app.get("/api/detections")
 def get_detections():
+    if not ai_enabled:
+        return {
+            "count": 0,
+            "detections": [],
+            "ai_enabled": False,
+        }
+
     detections = ai_processor.get_latest_detections()
 
     return {
         "count": len(detections),
         "detections": detections,
+        "ai_enabled": True,
     }
 
 
