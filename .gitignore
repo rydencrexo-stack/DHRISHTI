@@ -1,1 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
 
+# FastAPI
+*.log
+
+# Node / React
+node_modules/
+dist/
+.vite/
+
+# VS Code
+.vscode/
+
+# AI models
+*.pt
+*.onnx
+*.engine
+
+# Large videos
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# OS
+.DS_Store
+Thumbs.db
