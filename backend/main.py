@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
+from backend.ai_processor import AIProcessor
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 VIDEO_PATH = BASE_DIR / "demo_videos" / "cctv demo footage.mp4"
@@ -30,10 +32,33 @@ app.add_middleware(
 )
 
 
+ai_processor = AIProcessor()
+
+
+@app.on_event("startup")
+def start_ai_processor():
+    ai_processor.start()
+
+
+@app.on_event("shutdown")
+def stop_ai_processor():
+    ai_processor.stop()
+
+
 @app.get("/api/health")
 def health_check():
     return {
         "status": "healthy"
+    }
+
+
+@app.get("/api/detections")
+def get_detections():
+    detections = ai_processor.get_latest_detections()
+
+    return {
+        "count": len(detections),
+        "detections": detections,
     }
 
 
