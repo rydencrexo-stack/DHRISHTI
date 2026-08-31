@@ -1,54 +1,31 @@
+import { useEffect, useState } from "react";
 import "./App.css";
 
-const cameras = [
-  {
-    id: "CAM-01",
-    location: "MAIN BORDER GATE",
-    status: "DEMO MODE",
-  },
-  {
-    id: "CAM-02",
-    location: "BORDER SECTOR A",
-    status: "DEMO MODE",
-  },
-  {
-    id: "CAM-03",
-    location: "VEHICLE CHECKPOINT",
-    status: "DEMO MODE",
-  },
-  {
-    id: "CAM-04",
-    location: "BORDER SECTOR B",
-    status: "DEMO MODE",
-  },
-];
-
-const alerts = [
-  {
-    icon: "△",
-    title: "Awaiting AI events",
-    location: "Backend connection required",
-  },
-  {
-    icon: "●",
-    title: "Detection events",
-    location: "Not available yet",
-  },
-  {
-    icon: "□",
-    title: "Tracking events",
-    location: "Not available yet",
-  },
-  {
-    icon: "⌁",
-    title: "Intrusion events",
-    location: "Not available yet",
-  },
-];
+const BACKEND_URL = "http://127.0.0.1:8000";
 
 function App() {
+  const [backendStatus, setBackendStatus] = useState("Checking...");
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/health`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Backend unavailable");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setBackendStatus(data.status === "healthy" ? "Online" : "Offline");
+      })
+      .catch(() => {
+        setBackendStatus("Offline");
+      });
+  }, []);
+
   return (
-    <div className="app-shell">
+    <div className="app">
+      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
@@ -59,274 +36,261 @@ function App() {
           </div>
 
           <div>
-            <h2>DHRISHTI</h2>
-            <p>
-              INTELLIGENT
-              <br />
-              SURVEILLANCE
-            </p>
+            <h1>DHRISHTI</h1>
+            <span>INTELLIGENT SURVEILLANCE</span>
           </div>
         </div>
 
-        <div className="sidebar-section">
-          <p className="section-label">COMMAND CENTER</p>
+        <nav className="sidebar-nav">
+          <button className="nav-item active">
+            <span>▦</span>
+            Dashboard
+          </button>
 
-          <nav className="navigation">
-            <button className="nav-item active">
-              <span className="nav-icon">▦</span>
-              <span>Dashboard</span>
-            </button>
+          <button className="nav-item">
+            <span>◉</span>
+            Live Surveillance
+          </button>
 
-            <button className="nav-item">
-              <span className="nav-icon">◉</span>
-              <span>Live Surveillance</span>
-            </button>
+          <button className="nav-item">
+            <span>⚠</span>
+            Incidents
+          </button>
 
-            <button className="nav-item">
-              <span className="nav-icon">⌁</span>
-              <span>AI Detection</span>
-            </button>
+          <button className="nav-item">
+            <span>◫</span>
+            Analytics
+          </button>
+        </nav>
 
-            <button className="nav-item">
-              <span className="nav-icon">△</span>
-              <span>Incident Alerts</span>
-              <span className="alert-count">N/A</span>
-            </button>
+        <div className="system-status">
+          <div className="status-title">SYSTEM STATUS</div>
 
-            <button className="nav-item">
-              <span className="nav-icon">✧</span>
-              <span>Border Map</span>
-            </button>
-          </nav>
-        </div>
+          <div className="status-row">
+            <span>Backend</span>
 
-        <div className="sidebar-section analytics-section">
-          <p className="section-label">ANALYTICS</p>
-
-          <nav className="navigation">
-            <button className="nav-item">
-              <span className="nav-icon">▤</span>
-              <span>Analytics</span>
-            </button>
-
-            <button className="nav-item">
-              <span className="nav-icon">◷</span>
-              <span>Activity Logs</span>
-            </button>
-
-            <button className="nav-item">
-              <span className="nav-icon">⚙</span>
-              <span>System Settings</span>
-            </button>
-          </nav>
-        </div>
-
-        <div className="sidebar-bottom">
-          <div className="system-card">
-            <p>Infrastructure Status</p>
-            <div className="system-status">
-              <span className="status-dot"></span>
-              <span>Demo Interface Ready</span>
-            </div>
+            <strong
+              className={
+                backendStatus === "Online"
+                  ? "status-online"
+                  : backendStatus === "Checking..."
+                    ? "status-checking"
+                    : "status-offline"
+              }
+            >
+              {backendStatus}
+            </strong>
           </div>
 
-          <div className="secure-system">
-            <span className="secure-icon">◇</span>
-            <div>
-              <strong>SECURE SYSTEM</strong>
-              <p>Encrypted surveillance network</p>
-            </div>
+          <div className="status-row">
+            <span>CCTV</span>
+
+            <strong
+              className={
+                backendStatus === "Online" ? "status-online" : "status-offline"
+              }
+            >
+              {backendStatus === "Online" ? "Connected" : "Offline"}
+            </strong>
+          </div>
+
+          <div className="status-row">
+            <span>AI Engine</span>
+            <strong className="status-checking">Awaiting API</strong>
           </div>
         </div>
       </aside>
 
+      {/* MAIN CONTENT */}
       <main className="main-content">
+        {/* HEADER */}
         <header className="topbar">
           <div>
-            <p className="eyebrow">• BORDER SURVEILLANCE COMMAND</p>
-            <h1>Surveillance Overview</h1>
+            <div className="eyebrow">BORDER SURVEILLANCE COMMAND</div>
+
+            <h2>Surveillance Overview</h2>
+
             <p className="subtitle">
               AI-powered border monitoring and intelligent video analytics
             </p>
           </div>
 
-          <div className="operator-area">
-            <div className="engine-status">
-              <span>•</span> AI ENGINE ONLINE
-            </div>
-
-            <div className="operator-time">--:--:--</div>
-
-            <div className="operator">
-              <div className="operator-avatar">OP</div>
-              <div>
-                <strong>OPERATOR</strong>
-                <span>Control Room</span>
-              </div>
-            </div>
+          <div className="topbar-status">
+            <span className="status-dot"></span>
+            BACKEND {backendStatus.toUpperCase()}
           </div>
         </header>
 
+        {/* STATISTICS */}
         <section className="stats-grid">
           <div className="stat-card">
-            <div className="stat-icon">□</div>
-            <div>
-              <p>ACTIVE CAMERAS</p>
-              <strong>N/A</strong>
-              <span>Backend data pending</span>
-            </div>
+            <div className="stat-label">ACTIVE CAMERAS</div>
+
+            <div className="stat-value">01</div>
+
+            <div className="stat-note">Demo CCTV stream connected</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon">⌁</div>
-            <div>
-              <p>AI DETECTIONS</p>
-              <strong>N/A</strong>
-              <span>Backend data pending</span>
-            </div>
+            <div className="stat-label">AI DETECTIONS</div>
+
+            <div className="stat-value">N/A</div>
+
+            <div className="stat-note">Detection API pending</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon">△</div>
-            <div>
-              <p>ACTIVE ALERTS</p>
-              <strong>N/A</strong>
-              <span>Backend data pending</span>
-            </div>
+            <div className="stat-label">ACTIVE ALERTS</div>
+
+            <div className="stat-value">N/A</div>
+
+            <div className="stat-note">Alert API pending</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon">◎</div>
+            <div className="stat-label">AI ACCURACY</div>
+
+            <div className="stat-value">N/A</div>
+
+            <div className="stat-note">AI API pending</div>
+          </div>
+        </section>
+
+        {/* LIVE CCTV */}
+        <section className="panel">
+          <div className="panel-header">
             <div>
-              <p>AI ACCURACY</p>
-              <strong>N/A</strong>
-              <span>Backend data pending</span>
+              <div className="panel-kicker">LIVE SURVEILLANCE</div>
+
+              <h3>Live CCTV Surveillance</h3>
+            </div>
+
+            <span className="live-badge">● LIVE</span>
+          </div>
+
+          <div className="cctv-container">
+            <div className="camera-header">
+              <span>CAM-01 • DEMO SECTOR</span>
+
+              <span className="camera-live">● LIVE</span>
+            </div>
+
+            {backendStatus === "Online" ? (
+              <img
+                className="cctv-stream"
+                src={`${BACKEND_URL}/api/video/demo`}
+                alt="Live DHRISHTI CCTV surveillance feed"
+              />
+            ) : (
+              <div className="cctv-offline">
+                <div className="cctv-icon">◉</div>
+
+                <h3>CCTV stream unavailable</h3>
+
+                <p>
+                  Start the DHRISHTI backend to view the live surveillance feed.
+                </p>
+              </div>
+            )}
+
+            <div className="camera-footer">
+              <span>DEMO CCTV FEED</span>
+
+              <span>MJPEG STREAM</span>
             </div>
           </div>
         </section>
 
-        <section className="monitoring-layout">
-          <div className="panel cctv-panel">
+        {/* INCIDENTS + MAP */}
+        <section className="two-column">
+          <div className="panel">
             <div className="panel-header">
               <div>
-                <h2>Live CCTV Surveillance</h2>
-                <p>Existing infrastructure • AI analysis active</p>
+                <div className="panel-kicker">SECURITY EVENTS</div>
+
+                <h3>Incident Alerts</h3>
               </div>
 
-              <span className="live-badge">
-                <span></span> DEMO
-              </span>
+              <span className="waiting-badge">API PENDING</span>
             </div>
 
-            <div className="camera-grid">
-              {cameras.map((camera) => (
-                <div className="camera-card" key={camera.id}>
-                  <div className="camera-screen">
-                    <div className="camera-top">
-                      <span className="camera-id">
-                        {camera.id} - {camera.location}
-                      </span>
+            <div className="empty-state">
+              <div className="empty-icon">⚠</div>
 
-                      <span className="camera-live">
-                        <span></span> {camera.status}
-                      </span>
-                    </div>
+              <h3>No incident data available</h3>
 
-                    <div className="camera-placeholder">
-                      <div className="camera-crosshair">
-                        <span></span>
-                      </div>
-
-                      <p>LIVE CCTV FEED</p>
-                      <small>STREAM WILL CONNECT IN LATER STEP</small>
-                    </div>
-                  </div>
-
-                  <div className="camera-footer">
-                    <strong>{camera.location}</strong>
-                    <span>AI ANALYSIS AWAITING BACKEND</span>
-                  </div>
-                </div>
-              ))}
+              <p>
+                Incident information will appear here after the alerts API is
+                implemented.
+              </p>
             </div>
           </div>
 
-          <div className="panel alerts-panel">
+          <div className="panel">
             <div className="panel-header">
               <div>
-                <h2>AI Incident Alerts</h2>
-                <p>Real-time detection events</p>
+                <div className="panel-kicker">BORDER MONITORING</div>
+
+                <h3>Border Activity Map</h3>
               </div>
 
-              <span className="alert-badge">N/A</span>
-            </div>
-
-            <div className="alerts-list">
-              {alerts.map((alert, index) => (
-                <div className="alert-item" key={index}>
-                  <div className="alert-icon">{alert.icon}</div>
-
-                  <div className="alert-content">
-                    <strong>{alert.title}</strong>
-                    <span>{alert.location}</span>
-                  </div>
-
-                  <button className="view-button" type="button">
-                    VIEW
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="bottom-grid">
-          <div className="panel bottom-panel">
-            <div className="panel-header">
-              <div>
-                <h2>Border Activity Map</h2>
-                <p>Monitoring zones and surveillance coverage</p>
-              </div>
+              <span className="waiting-badge">DATA PENDING</span>
             </div>
 
             <div className="map-placeholder">
               <div className="map-grid"></div>
-              <span>BORDER MAP MODULE</span>
-              <small>Future backend integration</small>
-            </div>
-          </div>
 
-          <div className="panel bottom-panel">
-            <div className="panel-header">
-              <div>
-                <h2>AI Detection Summary</h2>
-                <p>Object detection overview</p>
-              </div>
-            </div>
+              <div className="map-center">
+                <div className="map-crosshair">+</div>
 
-            <div className="summary-list">
-              <div>
-                <span>PERSON</span>
-                <strong>N/A</strong>
-              </div>
-
-              <div>
-                <span>VEHICLE</span>
-                <strong>N/A</strong>
-              </div>
-
-              <div>
-                <span>TRACKING</span>
-                <strong>N/A</strong>
-              </div>
-
-              <div>
-                <span>INTRUSION</span>
-                <strong>N/A</strong>
+                <span>MAP DATA UNAVAILABLE</span>
               </div>
             </div>
           </div>
         </section>
+
+        {/* AI SUMMARY */}
+        <section className="panel ai-summary">
+          <div className="panel-header">
+            <div>
+              <div className="panel-kicker">ARTIFICIAL INTELLIGENCE</div>
+
+              <h3>AI Detection Summary</h3>
+            </div>
+
+            <span className="waiting-badge">AI API PENDING</span>
+          </div>
+
+          <div className="ai-grid">
+            <div className="ai-item">
+              <span>PERSON DETECTIONS</span>
+              <strong>N/A</strong>
+            </div>
+
+            <div className="ai-item">
+              <span>VEHICLE DETECTIONS</span>
+              <strong>N/A</strong>
+            </div>
+
+            <div className="ai-item">
+              <span>UNUSUAL ACTIVITY</span>
+              <strong>N/A</strong>
+            </div>
+
+            <div className="ai-item">
+              <span>THREAT LEVEL</span>
+              <strong>Awaiting AI</strong>
+            </div>
+          </div>
+        </section>
+
+        <footer>
+          <span>DHRISHTI</span>
+
+          <span>AI-Based Intelligent Video Analytics Platform</span>
+
+          <span>Frontend • React</span>
+        </footer>
       </main>
     </div>
   );
