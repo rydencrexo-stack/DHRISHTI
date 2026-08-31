@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from backend.ai_processor import AIProcessor
+from backend.virtual_fence import VirtualFence
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,6 +37,17 @@ app.add_middleware(
 ai_processor = AIProcessor()
 ai_enabled = False
 
+# Default restricted area for the corridor demo.
+# The frontend can later visualize this same logical region.
+FENCE_POLYGON = [
+    (150, 100),
+    (300, 100),
+    (300, 300),
+    (150, 300),
+]
+
+virtual_fence = VirtualFence(FENCE_POLYGON)
+
 
 @app.on_event("startup")
 def start_ai_processor():
@@ -43,7 +55,10 @@ def start_ai_processor():
 
     if not MODEL_PATH.exists():
         print(f"WARNING: YOLO model not found: {MODEL_PATH}")
-        print("AI processing disabled. Health and CCTV endpoints remain available.")
+        print(
+            "AI processing disabled. "
+            "Health and CCTV endpoints remain available."
+        )
         ai_enabled = False
         return
 
@@ -53,7 +68,10 @@ def start_ai_processor():
         print("AI processor started successfully.")
     except Exception as error:
         print(f"WARNING: AI processor could not start: {error}")
-        print("AI processing disabled. Health and CCTV endpoints remain available.")
+        print(
+            "AI processing disabled. "
+            "Health and CCTV endpoints remain available."
+        )
         ai_enabled = False
 
 
@@ -85,6 +103,48 @@ def get_detections():
         "count": len(detections),
         "detections": detections,
         "ai_enabled": True,
+    }
+
+
+@app.get("/api/intrusions")
+def get_intrusions():
+    if not ai_enabled:
+        return {
+            "count": 0,
+            "intrusions": [],
+            "ai_enabled": False,
+        }
+
+    detections = ai_processor.get_latest_detections()
+
+    intrusions = []
+
+    for detection in detections:
+        if virtual_fence.check_detection(detection):
+            intrusions.append(
+                {
+                    "track_id": detection.get("track_id"),
+                    "class_name": detection.get("class_name"),
+                    "confidence": detection.get("confidence"),
+                    "bbox": detection.get("bbox"),
+                    "event": "restricted_area_intrusion",
+                }
+            )
+
+    return {
+        "count": len(intrusions),
+        "intrusions": intrusions,
+        "ai_enabled": True,
+    }
+
+
+@app.get("/api/fence")
+def get_fence():
+    return {
+        "polygon": [
+            [x, y]
+            for x, y in FENCE_POLYGON
+        ]
     }
 
 
