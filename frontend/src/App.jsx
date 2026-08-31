@@ -5,23 +5,123 @@ const BACKEND_URL = "http://127.0.0.1:8000";
 
 function App() {
   const [backendStatus, setBackendStatus] = useState("Checking...");
+  const [detections, setDetections] = useState([]);
+  const [intrusions, setIntrusions] = useState([]);
+  const [fence, setFence] = useState(null);
+  const [apiError, setApiError] = useState(false);
 
+  // -----------------------------
+  // HEALTH
+  // -----------------------------
+  const checkHealth = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/health`);
+
+      if (!response.ok) {
+        throw new Error("Backend unavailable");
+      }
+
+      const data = await response.json();
+
+      setBackendStatus(data.status === "healthy" ? "Online" : "Offline");
+
+      setApiError(false);
+    } catch (error) {
+      setBackendStatus("Offline");
+      setApiError(true);
+    }
+  };
+
+  // -----------------------------
+  // DETECTIONS
+  // -----------------------------
+  const fetchDetections = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/detections`);
+
+      if (!response.ok) {
+        throw new Error("Detection API unavailable");
+      }
+
+      const data = await response.json();
+
+      /*
+       * Backend may return either:
+       * an array directly
+       * or { detections: [...] }
+       */
+      if (Array.isArray(data)) {
+        setDetections(data);
+      } else {
+        setDetections(data.detections || []);
+      }
+    } catch (error) {
+      setDetections([]);
+    }
+  };
+
+  // -----------------------------
+  // INTRUSIONS
+  // -----------------------------
+  const fetchIntrusions = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/intrusions`);
+
+      if (!response.ok) {
+        throw new Error("Intrusion API unavailable");
+      }
+
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        setIntrusions(data);
+      } else {
+        setIntrusions(data.intrusions || []);
+      }
+    } catch (error) {
+      setIntrusions([]);
+    }
+  };
+
+  // -----------------------------
+  // FENCE
+  // -----------------------------
+  const fetchFence = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/fence`);
+
+      if (!response.ok) {
+        throw new Error("Fence API unavailable");
+      }
+
+      const data = await response.json();
+
+      setFence(data);
+    } catch (error) {
+      setFence(null);
+    }
+  };
+
+  // -----------------------------
+  // INITIAL LOAD + REFRESH
+  // -----------------------------
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/health`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Backend unavailable");
-        }
+    checkHealth();
+    fetchDetections();
+    fetchIntrusions();
+    fetchFence();
 
-        return response.json();
-      })
-      .then((data) => {
-        setBackendStatus(data.status === "healthy" ? "Online" : "Offline");
-      })
-      .catch(() => {
-        setBackendStatus("Offline");
-      });
+    const interval = setInterval(() => {
+      checkHealth();
+      fetchDetections();
+      fetchIntrusions();
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  const detectionCount = detections.length;
+  const intrusionCount = intrusions.length;
 
   return (
     <div className="app">
@@ -42,27 +142,57 @@ function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className="nav-item active">
+          <button
+            className="nav-item active"
+            onClick={() =>
+              window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+              })
+            }
+          >
             <span>▦</span>
             Dashboard
           </button>
 
-          <button className="nav-item">
+          <button
+            className="nav-item"
+            onClick={() =>
+              document.getElementById("live-surveillance")?.scrollIntoView({
+                behavior: "smooth",
+              })
+            }
+          >
             <span>◉</span>
             Live Surveillance
           </button>
 
-          <button className="nav-item">
+          <button
+            className="nav-item"
+            onClick={() =>
+              document.getElementById("incidents")?.scrollIntoView({
+                behavior: "smooth",
+              })
+            }
+          >
             <span>⚠</span>
             Incidents
           </button>
 
-          <button className="nav-item">
+          <button
+            className="nav-item"
+            onClick={() =>
+              document.getElementById("analytics")?.scrollIntoView({
+                behavior: "smooth",
+              })
+            }
+          >
             <span>◫</span>
             Analytics
           </button>
         </nav>
 
+        {/* SYSTEM STATUS */}
         <div className="system-status">
           <div className="status-title">SYSTEM STATUS</div>
 
@@ -96,12 +226,19 @@ function App() {
 
           <div className="status-row">
             <span>AI Engine</span>
-            <strong className="status-checking">Awaiting API</strong>
+
+            <strong
+              className={
+                detectionCount > 0 ? "status-online" : "status-checking"
+              }
+            >
+              {detectionCount > 0 ? "Active" : "Monitoring"}
+            </strong>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <main className="main-content">
         {/* HEADER */}
         <header className="topbar">
@@ -116,7 +253,11 @@ function App() {
           </div>
 
           <div className="topbar-status">
-            <span className="status-dot"></span>
+            <span
+              className={
+                backendStatus === "Online" ? "status-dot" : "status-dot offline"
+              }
+            ></span>
             BACKEND {backendStatus.toUpperCase()}
           </div>
         </header>
@@ -128,36 +269,38 @@ function App() {
 
             <div className="stat-value">01</div>
 
-            <div className="stat-note">Demo CCTV stream connected</div>
+            <div className="stat-note">Live CCTV stream</div>
           </div>
 
           <div className="stat-card">
             <div className="stat-label">AI DETECTIONS</div>
 
-            <div className="stat-value">N/A</div>
+            <div className="stat-value">{detectionCount}</div>
 
-            <div className="stat-note">Detection API pending</div>
+            <div className="stat-note">Real YOLO detections</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-label">ACTIVE ALERTS</div>
+            <div className="stat-label">ACTIVE INTRUSIONS</div>
 
-            <div className="stat-value">N/A</div>
+            <div className="stat-value">{intrusionCount}</div>
 
-            <div className="stat-note">Alert API pending</div>
+            <div className="stat-note">Restricted-zone entries</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-label">AI ACCURACY</div>
+            <div className="stat-label">AI ENGINE</div>
 
-            <div className="stat-value">N/A</div>
+            <div className="stat-value ai-status">
+              {detectionCount > 0 ? "ON" : "READY"}
+            </div>
 
-            <div className="stat-note">AI API pending</div>
+            <div className="stat-note">Live backend status</div>
           </div>
         </section>
 
-        {/* LIVE CCTV */}
-        <section className="panel">
+        {/* CCTV */}
+        <section id="live-surveillance" className="panel">
           <div className="panel-header">
             <div>
               <div className="panel-kicker">LIVE SURVEILLANCE</div>
@@ -201,40 +344,72 @@ function App() {
           </div>
         </section>
 
-        {/* INCIDENTS + MAP */}
-        <section className="two-column">
+        {/* INCIDENTS */}
+        <section id="incidents" className="two-column">
           <div className="panel">
             <div className="panel-header">
               <div>
                 <div className="panel-kicker">SECURITY EVENTS</div>
 
-                <h3>Incident Alerts</h3>
+                <h3>Restricted Area Intrusions</h3>
               </div>
 
-              <span className="waiting-badge">API PENDING</span>
+              <span
+                className={
+                  intrusionCount > 0 ? "danger-badge" : "waiting-badge"
+                }
+              >
+                {intrusionCount > 0
+                  ? `${intrusionCount} ACTIVE`
+                  : "NO INTRUSIONS"}
+              </span>
             </div>
 
-            <div className="empty-state">
-              <div className="empty-icon">⚠</div>
+            {intrusionCount > 0 ? (
+              <div className="incident-list">
+                {intrusions.map((intrusion, index) => (
+                  <div className="incident-item" key={intrusion.id || index}>
+                    <div className="incident-icon">⚠</div>
 
-              <h3>No incident data available</h3>
+                    <div className="incident-info">
+                      <strong>Person detected in restricted area</strong>
 
-              <p>
-                Incident information will appear here after the alerts API is
-                implemented.
-              </p>
-            </div>
+                      <span>
+                        Track ID:{" "}
+                        {intrusion.track_id || intrusion.id || "Unknown"}
+                      </span>
+                    </div>
+
+                    <div className="incident-time">ACTIVE</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon">✓</div>
+
+                <h3>No active intrusions</h3>
+
+                <p>
+                  No tracked persons are currently reported inside the
+                  restricted area.
+                </p>
+              </div>
+            )}
           </div>
 
+          {/* FENCE */}
           <div className="panel">
             <div className="panel-header">
               <div>
                 <div className="panel-kicker">BORDER MONITORING</div>
 
-                <h3>Border Activity Map</h3>
+                <h3>Restricted Zone</h3>
               </div>
 
-              <span className="waiting-badge">DATA PENDING</span>
+              <span className="waiting-badge">
+                {fence ? "ZONE ACTIVE" : "LOADING"}
+              </span>
             </div>
 
             <div className="map-placeholder">
@@ -243,46 +418,90 @@ function App() {
               <div className="map-center">
                 <div className="map-crosshair">+</div>
 
-                <span>MAP DATA UNAVAILABLE</span>
+                <span>
+                  {fence ? "RESTRICTED POLYGON ACTIVE" : "LOADING FENCE DATA"}
+                </span>
+
+                <small>
+                  {fence
+                    ? "Live /api/fence response received"
+                    : "Waiting for backend"}
+                </small>
               </div>
             </div>
           </div>
         </section>
 
-        {/* AI SUMMARY */}
-        <section className="panel ai-summary">
+        {/* ANALYTICS */}
+        <section id="analytics" className="panel ai-summary">
           <div className="panel-header">
             <div>
               <div className="panel-kicker">ARTIFICIAL INTELLIGENCE</div>
 
-              <h3>AI Detection Summary</h3>
+              <h3>Live Detection Summary</h3>
             </div>
 
-            <span className="waiting-badge">AI API PENDING</span>
+            <span className="live-badge">REAL DATA</span>
           </div>
 
           <div className="ai-grid">
             <div className="ai-item">
               <span>PERSON DETECTIONS</span>
-              <strong>N/A</strong>
+
+              <strong>{detectionCount}</strong>
             </div>
 
             <div className="ai-item">
-              <span>VEHICLE DETECTIONS</span>
-              <strong>N/A</strong>
+              <span>ACTIVE INTRUSIONS</span>
+
+              <strong>{intrusionCount}</strong>
             </div>
 
             <div className="ai-item">
-              <span>UNUSUAL ACTIVITY</span>
-              <strong>N/A</strong>
+              <span>RESTRICTED ZONE</span>
+
+              <strong>{fence ? "ACTIVE" : "LOADING"}</strong>
             </div>
 
             <div className="ai-item">
-              <span>THREAT LEVEL</span>
-              <strong>Awaiting AI</strong>
+              <span>BACKEND</span>
+
+              <strong>{backendStatus}</strong>
             </div>
           </div>
+
+          {/* DETECTION DETAILS */}
+          <div className="detection-details">
+            <div className="detection-title">CURRENT YOLO DETECTIONS</div>
+
+            {detectionCount > 0 ? (
+              <div className="detection-list">
+                {detections.map((detection, index) => (
+                  <div className="detection-row" key={detection.id || index}>
+                    <span>Person #{index + 1}</span>
+
+                    <span>
+                      {detection.confidence !== undefined
+                        ? `${(Number(detection.confidence) * 100).toFixed(1)}%`
+                        : "Detected"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-detections">
+                No person detections currently reported by the AI API.
+              </div>
+            )}
+          </div>
         </section>
+
+        {apiError && (
+          <div className="api-warning">
+            Backend connection unavailable. Make sure FastAPI is running on
+            127.0.0.1:8000.
+          </div>
+        )}
 
         <footer>
           <span>DHRISHTI</span>
