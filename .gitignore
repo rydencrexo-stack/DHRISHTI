@@ -28,6 +28,9 @@ dist/
 *.mov
 *.mkv
 
+# Allow the DHRISHTI demo CCTV video
+!demo_videos/cctv demo footage.mp4
+
 # OS
 .DS_Store
 Thumbs.db
