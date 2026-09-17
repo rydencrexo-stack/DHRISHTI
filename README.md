@@ -5,7 +5,7 @@ AI-powered CCTV intelligence for real-time border surveillance, object detection
 
 - Got 3rd place for this project 
 
-———
+
 
 ## 👨‍💻 Author
 
@@ -18,9 +18,10 @@ AI-powered CCTV intelligence for real-time border surveillance, object detection
 **Rehan Khan**
 - Frontend Developer
 
+
 And 3 more
 
-———
+
 Cybersecurity Engineer | Developer
 
 GitHub: https://github.com/rydencrexo-stack
