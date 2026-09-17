@@ -9,7 +9,7 @@ AI-powered CCTV intelligence for real-time border surveillance, object detection
 
 ## 👨‍💻 Author
 
-**Atharva Deshmukh** 
+**Atharva A. Deshmukh** 
 - Backend
 
 **Varsha Solanki**
@@ -21,6 +21,8 @@ AI-powered CCTV intelligence for real-time border surveillance, object detection
 
 And 3 more
 
+
+## Atharva A. Deshmukh
 
 Cybersecurity Engineer | Developer
 
